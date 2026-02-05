@@ -5,15 +5,12 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     FileBox,
-    Grid3X3,
-    LayoutList,
     Plus,
     Search,
     Filter,
     MoreHorizontal,
     Clock,
     MapPin,
-    User,
     Eye,
     Edit,
     Link as LinkIcon,
@@ -27,9 +24,12 @@ import {
     DollarSign,
     X,
     ChevronRight,
+    ChevronDown,
     CheckCircle,
     AlertCircle,
     Lock,
+    Briefcase,
+    User,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -44,13 +44,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
     Dialog,
     DialogContent,
@@ -67,29 +60,26 @@ import {
     type EvidenceType,
     type EvidenceStatus,
 } from "@/types/evidence";
-
-type ViewMode = "grid" | "table";
-
-const statusOptions: EvidenceStatus[] = ["collected", "stored", "pending_analysis", "under_analysis", "analyzed", "released", "destroyed"];
-const typeOptions: EvidenceType[] = ["ballistics", "dna", "fingerprint", "document", "photo", "video", "audio", "digital_storage", "drugs", "weapon", "clothing", "financial", "other"];
+import { CASE_STATUS_LABELS, CASE_PRIORITY_LABELS } from "@/types/case";
 
 // Icon mapping for evidence types
 const typeIcons: Record<EvidenceType, React.ReactNode> = {
-    ballistics: <Shield className="h-5 w-5" />,
-    dna: <Fingerprint className="h-5 w-5" />,
-    fingerprint: <Fingerprint className="h-5 w-5" />,
-    document: <FileText className="h-5 w-5" />,
-    photo: <Camera className="h-5 w-5" />,
-    video: <Film className="h-5 w-5" />,
-    audio: <Film className="h-5 w-5" />,
-    digital_storage: <HardDrive className="h-5 w-5" />,
-    drugs: <Pill className="h-5 w-5" />,
-    weapon: <Shield className="h-5 w-5" />,
-    clothing: <User className="h-5 w-5" />,
-    financial: <DollarSign className="h-5 w-5" />,
-    other: <FileBox className="h-5 w-5" />,
+    ballistics: <Shield className="h-4 w-4" />,
+    dna: <Fingerprint className="h-4 w-4" />,
+    fingerprint: <Fingerprint className="h-4 w-4" />,
+    document: <FileText className="h-4 w-4" />,
+    photo: <Camera className="h-4 w-4" />,
+    video: <Film className="h-4 w-4" />,
+    audio: <Film className="h-4 w-4" />,
+    digital_storage: <HardDrive className="h-4 w-4" />,
+    drugs: <Pill className="h-4 w-4" />,
+    weapon: <Shield className="h-4 w-4" />,
+    clothing: <User className="h-4 w-4" />,
+    financial: <DollarSign className="h-4 w-4" />,
+    other: <FileBox className="h-4 w-4" />,
 };
 
+// Chain of Custody Modal
 function ChainOfCustodyModal({
     evidence,
     open,
@@ -110,7 +100,6 @@ function ChainOfCustodyModal({
                 </DialogHeader>
 
                 <div className="mt-4 space-y-4">
-                    {/* Current Status */}
                     <div className="p-4 bg-bureau-800/50 rounded-lg border border-bureau-700">
                         <div className="flex items-center justify-between">
                             <div>
@@ -131,20 +120,16 @@ function ChainOfCustodyModal({
                         </div>
                     </div>
 
-                    {/* Timeline */}
-                    <div className="relative">
+                    <div className="relative max-h-[400px] overflow-y-auto">
                         {evidence.chainOfCustody.map((entry, index) => {
                             const handler = seedUsers.find((u) => u.id === entry.handledBy);
                             const receiver = seedUsers.find((u) => u.id === entry.receivedBy);
 
                             return (
-                                <div key={entry.id} className="relative pl-8 pb-6 last:pb-0">
-                                    {/* Timeline line */}
+                                <div key={entry.id} className="relative pl-8 pb-4 last:pb-0">
                                     {index < evidence.chainOfCustody.length - 1 && (
                                         <div className="absolute left-[15px] top-8 bottom-0 w-0.5 bg-bureau-700" />
                                     )}
-
-                                    {/* Timeline dot */}
                                     <div
                                         className={cn(
                                             "absolute left-0 top-1 w-8 h-8 rounded-full flex items-center justify-center",
@@ -153,55 +138,27 @@ function ChainOfCustodyModal({
                                                 : "bg-status-warning/20 text-status-warning"
                                         )}
                                     >
-                                        {entry.verified ? (
-                                            <CheckCircle className="h-4 w-4" />
-                                        ) : (
-                                            <AlertCircle className="h-4 w-4" />
-                                        )}
+                                        {entry.verified ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
                                     </div>
-
-                                    {/* Entry content */}
-                                    <div className="bg-bureau-800/30 rounded-lg p-4 border border-bureau-700">
+                                    <div className="bg-bureau-800/30 rounded-lg p-3 border border-bureau-700">
                                         <div className="flex items-start justify-between mb-2">
-                                            <div>
-                                                <p className="font-medium text-bureau-100 capitalize">
-                                                    {entry.action.replace("_", " ")}
-                                                </p>
-                                                <p className="text-xs text-bureau-500 mt-0.5">
-                                                    {new Date(entry.timestamp).toLocaleString()}
-                                                </p>
-                                            </div>
-                                            {entry.verified && (
-                                                <Badge variant="success" size="xs">
-                                                    Verified
-                                                </Badge>
-                                            )}
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4 text-sm mt-3">
-                                            <div>
-                                                <p className="text-bureau-500 text-xs">From</p>
-                                                <p className="text-bureau-300">{entry.fromLocation}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-bureau-500 text-xs">To</p>
-                                                <p className="text-bureau-300">{entry.toLocation}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-bureau-500 text-xs">Handled By</p>
-                                                <p className="text-bureau-300">{handler?.fullName || "Unknown"}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-bureau-500 text-xs">Received By</p>
-                                                <p className="text-bureau-300">{receiver?.fullName || "Unknown"}</p>
-                                            </div>
-                                        </div>
-
-                                        {entry.notes && (
-                                            <p className="text-sm text-bureau-400 mt-3 italic border-t border-bureau-700 pt-3">
-                                                {entry.notes}
+                                            <p className="font-medium text-bureau-100 capitalize text-sm">
+                                                {entry.action.replace("_", " ")}
                                             </p>
-                                        )}
+                                            <span className="text-xs text-bureau-500">
+                                                {new Date(entry.timestamp).toLocaleDateString()}
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2 text-xs">
+                                            <div>
+                                                <span className="text-bureau-500">From: </span>
+                                                <span className="text-bureau-300">{entry.fromLocation}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-bureau-500">To: </span>
+                                                <span className="text-bureau-300">{entry.toLocation}</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             );
@@ -213,168 +170,42 @@ function ChainOfCustodyModal({
     );
 }
 
-function EvidenceCard({ evidence }: { evidence: (typeof seedEvidence)[0] }) {
+// Compact Evidence Item within a case
+function EvidenceItem({ evidence }: { evidence: (typeof seedEvidence)[0] }) {
     const [showCustody, setShowCustody] = useState(false);
-    const linkedCase = seedCases.find((c) => c.id === evidence.caseId);
-    const collector = seedUsers.find((u) => u.id === evidence.collectedBy);
 
     return (
         <>
-            <motion.div
-                layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-            >
-                <Card hover padding="none" className="group">
-                    <div className="p-4 space-y-3">
-                        {/* Header */}
-                        <div className="flex items-start gap-3">
-                            <div
-                                className={cn(
-                                    "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0",
-                                    evidence.isClassified
-                                        ? "bg-status-critical/20 text-status-critical"
-                                        : "bg-accent-primary/20 text-accent-primary"
-                                )}
-                            >
-                                {typeIcons[evidence.type]}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <p className="text-xs font-mono text-bureau-500">
-                                        {evidence.evidenceNumber}
-                                    </p>
-                                    {evidence.isClassified && (
-                                        <Lock className="h-3 w-3 text-status-critical" />
-                                    )}
-                                </div>
-                                <h3 className="text-sm font-medium text-bureau-100 mt-0.5 line-clamp-1 group-hover:text-accent-primary transition-colors">
-                                    {evidence.name}
-                                </h3>
-                            </div>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <button className="p-1 hover:bg-bureau-700 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <MoreHorizontal className="h-4 w-4 text-bureau-400" />
-                                    </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem>
-                                        <Eye className="mr-2 h-4 w-4" />
-                                        View Details
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setShowCustody(true)}>
-                                        <LinkIcon className="mr-2 h-4 w-4" />
-                                        Chain of Custody
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem>
-                                        <Edit className="mr-2 h-4 w-4" />
-                                        Edit
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </div>
+            <div className="flex items-center gap-3 p-3 bg-bureau-800/30 rounded-lg border border-bureau-700 hover:border-bureau-600 transition-colors group">
+                <div
+                    className={cn(
+                        "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
+                        evidence.isClassified
+                            ? "bg-status-critical/20 text-status-critical"
+                            : "bg-accent-primary/20 text-accent-primary"
+                    )}
+                >
+                    {typeIcons[evidence.type]}
+                </div>
 
-                        {/* Description */}
-                        <p className="text-xs text-bureau-400 line-clamp-2">
-                            {evidence.description}
-                        </p>
-
-                        {/* Status & Type */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <Badge
-                                variant={
-                                    evidence.status === "analyzed"
-                                        ? "success"
-                                        : evidence.status === "pending_analysis"
-                                            ? "warning"
-                                            : evidence.status === "under_analysis"
-                                                ? "info"
-                                                : "default"
-                                }
-                                size="xs"
-                            >
-                                {EVIDENCE_STATUS_LABELS[evidence.status]}
-                            </Badge>
-                            <Badge variant="outline" size="xs">
-                                {EVIDENCE_TYPE_LABELS[evidence.type]}
-                            </Badge>
-                            <Badge variant="default" size="xs">
-                                {EVIDENCE_CATEGORY_LABELS[evidence.category]}
-                            </Badge>
-                        </div>
-
-                        {/* Location */}
-                        <div className="flex items-center gap-1.5 text-xs text-bureau-400">
-                            <MapPin className="h-3 w-3" />
-                            <span className="truncate">{evidence.location.current}</span>
-                        </div>
-                    </div>
-
-                    {/* Footer */}
-                    <div className="px-4 py-3 bg-bureau-850/50 border-t border-bureau-700 flex items-center justify-between text-xs">
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
                         <Link
-                            href={`/cases/${evidence.caseId}`}
-                            className="flex items-center gap-1 text-bureau-400 hover:text-accent-primary"
+                            href={`/evidence/${evidence.id}`}
+                            className="text-sm font-medium text-bureau-100 hover:text-accent-primary truncate"
                         >
-                            <FileBox className="h-3 w-3" />
-                            <span>{linkedCase?.caseNumber || "Unknown Case"}</span>
+                            {evidence.name}
                         </Link>
-                        <button
-                            onClick={() => setShowCustody(true)}
-                            className="flex items-center gap-1 text-bureau-500 hover:text-accent-primary transition-colors"
-                        >
-                            <span>{evidence.chainOfCustody.length} custody records</span>
-                            <ChevronRight className="h-3 w-3" />
-                        </button>
+                        {evidence.isClassified && <Lock className="h-3 w-3 text-status-critical flex-shrink-0" />}
                     </div>
-                </Card>
-            </motion.div>
-
-            <ChainOfCustodyModal
-                evidence={evidence}
-                open={showCustody}
-                onClose={() => setShowCustody(false)}
-            />
-        </>
-    );
-}
-
-function EvidenceTableRow({ evidence }: { evidence: (typeof seedEvidence)[0] }) {
-    const [showCustody, setShowCustody] = useState(false);
-    const linkedCase = seedCases.find((c) => c.id === evidence.caseId);
-    const collector = seedUsers.find((u) => u.id === evidence.collectedBy);
-
-    return (
-        <>
-            <tr className="border-b border-bureau-700 hover:bg-bureau-800/50 transition-colors">
-                <td className="py-3 px-4">
-                    <div className="flex items-center gap-3">
-                        <div
-                            className={cn(
-                                "w-10 h-10 rounded flex items-center justify-center flex-shrink-0",
-                                evidence.isClassified
-                                    ? "bg-status-critical/20 text-status-critical"
-                                    : "bg-accent-primary/20 text-accent-primary"
-                            )}
-                        >
-                            {typeIcons[evidence.type]}
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <p className="font-mono text-xs text-bureau-400">{evidence.evidenceNumber}</p>
-                                {evidence.isClassified && (
-                                    <Lock className="h-3 w-3 text-status-critical" />
-                                )}
-                            </div>
-                            <p className="text-sm font-medium text-bureau-100 max-w-[250px] truncate">
-                                {evidence.name}
-                            </p>
-                        </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs font-mono text-bureau-500">{evidence.evidenceNumber}</span>
+                        <span className="text-xs text-bureau-600">•</span>
+                        <span className="text-xs text-bureau-400">{EVIDENCE_TYPE_LABELS[evidence.type]}</span>
                     </div>
-                </td>
-                <td className="py-3 px-4">
+                </div>
+
+                <div className="flex items-center gap-2">
                     <Badge
                         variant={
                             evidence.status === "analyzed"
@@ -389,53 +220,22 @@ function EvidenceTableRow({ evidence }: { evidence: (typeof seedEvidence)[0] }) 
                     >
                         {EVIDENCE_STATUS_LABELS[evidence.status]}
                     </Badge>
-                </td>
-                <td className="py-3 px-4">
-                    <span className="text-sm text-bureau-300">
-                        {EVIDENCE_TYPE_LABELS[evidence.type]}
-                    </span>
-                </td>
-                <td className="py-3 px-4">
-                    <Link
-                        href={`/cases/${evidence.caseId}`}
-                        className="text-sm text-bureau-400 hover:text-accent-primary"
-                    >
-                        {linkedCase?.caseNumber}
+                </div>
+
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Link href={`/evidence/${evidence.id}`}>
+                        <button className="p-1.5 hover:bg-bureau-700 rounded text-bureau-400 hover:text-bureau-100">
+                            <Eye className="h-4 w-4" />
+                        </button>
                     </Link>
-                </td>
-                <td className="py-3 px-4">
-                    <span className="text-sm text-bureau-400 truncate max-w-[150px] block">
-                        {evidence.location.current}
-                    </span>
-                </td>
-                <td className="py-3 px-4">
                     <button
                         onClick={() => setShowCustody(true)}
-                        className="text-sm text-accent-primary hover:underline"
+                        className="p-1.5 hover:bg-bureau-700 rounded text-bureau-400 hover:text-bureau-100"
                     >
-                        {evidence.chainOfCustody.length} entries
+                        <LinkIcon className="h-4 w-4" />
                     </button>
-                </td>
-                <td className="py-3 px-4">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <button className="p-1 hover:bg-bureau-700 rounded">
-                                <MoreHorizontal className="h-4 w-4 text-bureau-400" />
-                            </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setShowCustody(true)}>
-                                <LinkIcon className="mr-2 h-4 w-4" />
-                                Chain of Custody
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </td>
-            </tr>
+                </div>
+            </div>
 
             <ChainOfCustodyModal
                 evidence={evidence}
@@ -446,26 +246,190 @@ function EvidenceTableRow({ evidence }: { evidence: (typeof seedEvidence)[0] }) 
     );
 }
 
+// Case Section with Evidence
+function CaseEvidenceSection({
+    caseData,
+    evidenceItems,
+    defaultExpanded = false
+}: {
+    caseData: typeof seedCases[0];
+    evidenceItems: typeof seedEvidence;
+    defaultExpanded?: boolean;
+}) {
+    const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+    const leadInvestigator = seedUsers.find((u) => u.id === caseData.leadInvestigatorId);
+
+    const analyzedCount = evidenceItems.filter(e => e.status === "analyzed").length;
+    const pendingCount = evidenceItems.filter(e => e.status === "pending_analysis" || e.status === "under_analysis").length;
+
+    return (
+        <Card className="overflow-hidden">
+            {/* Case Header - Clickable */}
+            <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="w-full p-4 flex items-center gap-4 hover:bg-bureau-800/50 transition-colors"
+            >
+                <div className={cn(
+                    "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0",
+                    caseData.priority === "critical" ? "bg-status-critical/20" :
+                        caseData.priority === "high" ? "bg-status-warning/20" :
+                            "bg-accent-primary/20"
+                )}>
+                    <Briefcase className={cn(
+                        "h-6 w-6",
+                        caseData.priority === "critical" ? "text-status-critical" :
+                            caseData.priority === "high" ? "text-status-warning" :
+                                "text-accent-primary"
+                    )} />
+                </div>
+
+                <div className="flex-1 text-left min-w-0">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-bureau-500">{caseData.caseNumber}</span>
+                        <Badge
+                            variant={
+                                caseData.priority === "critical"
+                                    ? "priority-critical"
+                                    : caseData.priority === "high"
+                                        ? "priority-high"
+                                        : "priority-medium"
+                            }
+                            size="xs"
+                        >
+                            {CASE_PRIORITY_LABELS[caseData.priority]}
+                        </Badge>
+                        <Badge
+                            variant={
+                                caseData.status === "active"
+                                    ? "case-active"
+                                    : caseData.status === "closed"
+                                        ? "case-closed"
+                                        : "default"
+                            }
+                            size="xs"
+                        >
+                            {CASE_STATUS_LABELS[caseData.status]}
+                        </Badge>
+                    </div>
+                    <h3 className="text-base font-medium text-bureau-100 mt-1 truncate">
+                        {caseData.title}
+                    </h3>
+                    <div className="flex items-center gap-3 mt-1">
+                        <span className="text-xs text-bureau-400">
+                            Lead: {leadInvestigator?.fullName || "Unassigned"}
+                        </span>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-4 flex-shrink-0">
+                    <div className="text-right">
+                        <p className="text-lg font-bold text-bureau-100">{evidenceItems.length}</p>
+                        <p className="text-xs text-bureau-500">Evidence</p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {analyzedCount > 0 && (
+                            <div className="flex items-center gap-1 text-status-secure">
+                                <CheckCircle className="h-4 w-4" />
+                                <span className="text-xs">{analyzedCount}</span>
+                            </div>
+                        )}
+                        {pendingCount > 0 && (
+                            <div className="flex items-center gap-1 text-status-warning">
+                                <Clock className="h-4 w-4" />
+                                <span className="text-xs">{pendingCount}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    <motion.div
+                        animate={{ rotate: isExpanded ? 180 : 0 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        <ChevronDown className="h-5 w-5 text-bureau-400" />
+                    </motion.div>
+                </div>
+            </button>
+
+            {/* Evidence List - Expandable */}
+            <AnimatePresence>
+                {isExpanded && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                    >
+                        <div className="border-t border-bureau-700 p-4 space-y-2 bg-bureau-850/50">
+                            {evidenceItems.map((evidence) => (
+                                <EvidenceItem key={evidence.id} evidence={evidence} />
+                            ))}
+
+                            <div className="flex items-center justify-between pt-3 border-t border-bureau-700 mt-3">
+                                <Link
+                                    href={`/cases/${caseData.id}`}
+                                    className="text-xs text-accent-primary hover:underline flex items-center gap-1"
+                                >
+                                    View Full Case Details
+                                    <ChevronRight className="h-3 w-3" />
+                                </Link>
+                                <Button variant="outline" size="sm" leftIcon={<Plus className="h-3 w-3" />}>
+                                    Add Evidence
+                                </Button>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </Card>
+    );
+}
+
 export default function EvidencePage() {
-    const [viewMode, setViewMode] = useState<ViewMode>("grid");
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("all");
-    const [typeFilter, setTypeFilter] = useState<string>("all");
 
     const stats = getEvidenceStats();
 
-    const filteredEvidence = useMemo(() => {
-        return seedEvidence.filter((e) => {
+    // Group evidence by case
+    const evidenceByCase = useMemo(() => {
+        const grouped = new Map<string, typeof seedEvidence>();
+
+        seedEvidence.forEach((evidence) => {
+            // Apply filters
             const matchesSearch =
                 searchQuery === "" ||
-                e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                e.evidenceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                e.description.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesStatus = statusFilter === "all" || e.status === statusFilter;
-            const matchesType = typeFilter === "all" || e.type === typeFilter;
-            return matchesSearch && matchesStatus && matchesType;
+                evidence.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                evidence.evidenceNumber.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesStatus = statusFilter === "all" || evidence.status === statusFilter;
+
+            if (matchesSearch && matchesStatus) {
+                const caseId = evidence.caseId;
+                if (!grouped.has(caseId)) {
+                    grouped.set(caseId, []);
+                }
+                grouped.get(caseId)!.push(evidence);
+            }
         });
-    }, [searchQuery, statusFilter, typeFilter]);
+
+        return grouped;
+    }, [searchQuery, statusFilter]);
+
+    // Get cases that have evidence
+    const casesWithEvidence = useMemo(() => {
+        return seedCases
+            .filter((c) => evidenceByCase.has(c.id))
+            .sort((a, b) => {
+                // Sort by priority first, then by number of evidence items
+                const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+                const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+                if (priorityDiff !== 0) return priorityDiff;
+                return (evidenceByCase.get(b.id)?.length || 0) - (evidenceByCase.get(a.id)?.length || 0);
+            });
+    }, [evidenceByCase]);
+
+    const totalFilteredEvidence = Array.from(evidenceByCase.values()).reduce((acc, items) => acc + items.length, 0);
 
     return (
         <DashboardLayout>
@@ -478,40 +442,13 @@ export default function EvidencePage() {
                             Evidence Locker
                         </h1>
                         <p className="text-bureau-400 mt-1">
-                            {stats.total} items • {stats.pending} pending analysis • {stats.classified} classified
+                            {stats.total} total items organized across {seedCases.length} cases
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center bg-bureau-800 rounded-lg p-1">
-                            <button
-                                onClick={() => setViewMode("grid")}
-                                className={cn(
-                                    "p-2 rounded-md transition-colors",
-                                    viewMode === "grid"
-                                        ? "bg-bureau-700 text-bureau-100"
-                                        : "text-bureau-400 hover:text-bureau-200"
-                                )}
-                            >
-                                <Grid3X3 className="h-4 w-4" />
-                            </button>
-                            <button
-                                onClick={() => setViewMode("table")}
-                                className={cn(
-                                    "p-2 rounded-md transition-colors",
-                                    viewMode === "table"
-                                        ? "bg-bureau-700 text-bureau-100"
-                                        : "text-bureau-400 hover:text-bureau-200"
-                                )}
-                            >
-                                <LayoutList className="h-4 w-4" />
-                            </button>
-                        </div>
-
-                        <Button leftIcon={<Plus className="h-4 w-4" />}>
-                            Log Evidence
-                        </Button>
-                    </div>
+                    <Button leftIcon={<Plus className="h-4 w-4" />}>
+                        Log Evidence
+                    </Button>
                 </div>
 
                 {/* Stats Cards */}
@@ -567,7 +504,7 @@ export default function EvidencePage() {
                     <div className="flex-1 max-w-md relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-bureau-500" />
                         <Input
-                            placeholder="Search evidence..."
+                            placeholder="Search evidence by name or number..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="pl-10"
@@ -580,35 +517,20 @@ export default function EvidencePage() {
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Statuses</SelectItem>
-                            {statusOptions.map((status) => (
-                                <SelectItem key={status} value={status}>
-                                    {EVIDENCE_STATUS_LABELS[status]}
-                                </SelectItem>
-                            ))}
+                            <SelectItem value="collected">Collected</SelectItem>
+                            <SelectItem value="stored">Stored</SelectItem>
+                            <SelectItem value="pending_analysis">Pending Analysis</SelectItem>
+                            <SelectItem value="under_analysis">Under Analysis</SelectItem>
+                            <SelectItem value="analyzed">Analyzed</SelectItem>
                         </SelectContent>
                     </Select>
 
-                    <Select value={typeFilter} onValueChange={setTypeFilter}>
-                        <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Types</SelectItem>
-                            {typeOptions.slice(0, 10).map((type) => (
-                                <SelectItem key={type} value={type}>
-                                    {EVIDENCE_TYPE_LABELS[type]}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-
-                    {(statusFilter !== "all" || typeFilter !== "all" || searchQuery) && (
+                    {(statusFilter !== "all" || searchQuery) && (
                         <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => {
                                 setStatusFilter("all");
-                                setTypeFilter("all");
                                 setSearchQuery("");
                             }}
                         >
@@ -616,66 +538,41 @@ export default function EvidencePage() {
                             Clear
                         </Button>
                     )}
+
+                    <div className="text-sm text-bureau-400 self-center">
+                        Showing {totalFilteredEvidence} items in {casesWithEvidence.length} cases
+                    </div>
                 </div>
 
-                {/* Content */}
-                <AnimatePresence mode="wait">
-                    {viewMode === "grid" ? (
-                        <motion.div
-                            key="grid"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                        >
-                            {filteredEvidence.map((evidence) => (
-                                <EvidenceCard key={evidence.id} evidence={evidence} />
-                            ))}
-                            {filteredEvidence.length === 0 && (
-                                <div className="col-span-full text-center py-12 text-bureau-500">
-                                    <FileBox className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                                    <p>No evidence matches your filters</p>
-                                </div>
-                            )}
-                        </motion.div>
-                    ) : (
-                        <motion.div
-                            key="table"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                        >
-                            <Card padding="none">
-                                <div className="overflow-x-auto">
-                                    <table className="w-full data-table">
-                                        <thead>
-                                            <tr className="border-b border-bureau-700">
-                                                <th className="text-left py-3 px-4">Evidence</th>
-                                                <th className="text-left py-3 px-4">Status</th>
-                                                <th className="text-left py-3 px-4">Type</th>
-                                                <th className="text-left py-3 px-4">Case</th>
-                                                <th className="text-left py-3 px-4">Location</th>
-                                                <th className="text-left py-3 px-4">Chain</th>
-                                                <th className="text-left py-3 px-4 w-10"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {filteredEvidence.map((evidence) => (
-                                                <EvidenceTableRow key={evidence.id} evidence={evidence} />
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                {filteredEvidence.length === 0 && (
-                                    <div className="text-center py-12 text-bureau-500">
-                                        <FileBox className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                                        <p>No evidence matches your filters</p>
-                                    </div>
-                                )}
-                            </Card>
-                        </motion.div>
+                {/* Cases with Evidence - Accordion Style */}
+                <div className="space-y-3">
+                    {casesWithEvidence.map((caseData, index) => (
+                        <CaseEvidenceSection
+                            key={caseData.id}
+                            caseData={caseData}
+                            evidenceItems={evidenceByCase.get(caseData.id) || []}
+                            defaultExpanded={index === 0}
+                        />
+                    ))}
+
+                    {casesWithEvidence.length === 0 && (
+                        <Card className="p-12 text-center">
+                            <FileBox className="h-12 w-12 mx-auto mb-3 text-bureau-500 opacity-50" />
+                            <p className="text-bureau-400">No evidence matches your filters</p>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="mt-4"
+                                onClick={() => {
+                                    setStatusFilter("all");
+                                    setSearchQuery("");
+                                }}
+                            >
+                                Clear Filters
+                            </Button>
+                        </Card>
                     )}
-                </AnimatePresence>
+                </div>
             </div>
         </DashboardLayout>
     );
