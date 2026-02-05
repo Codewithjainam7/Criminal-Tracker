@@ -7,22 +7,19 @@ import {
     Users,
     Plus,
     Search,
-    Filter,
-    MoreHorizontal,
     Phone,
     Mail,
-    MapPin,
     Shield,
     Eye,
-    Edit,
     FileText,
     Clock,
     Briefcase,
-    AlertTriangle,
     CheckCircle,
     UserX,
-    Grid3X3,
-    LayoutList,
+    ChevronDown,
+    ChevronRight,
+    X,
+    MessageSquare,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -37,32 +34,22 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { seedCases } from "@/data/seed";
 import { cn, formatDate } from "@/lib/utils";
+import { CASE_STATUS_LABELS, CASE_PRIORITY_LABELS } from "@/types/case";
 
-// Witness types
-type WitnessStatus = "available" | "unavailable" | "protected" | "relocated" | "deceased";
-type WitnessType = "eyewitness" | "character" | "expert" | "alibi" | "cooperating";
-
+// Simplified Witness type for this page
 interface Witness {
     id: string;
     witnessNumber: string;
     firstName: string;
     lastName: string;
     fullName: string;
-    type: WitnessType;
-    status: WitnessStatus;
+    type: "eyewitness" | "character" | "expert" | "alibi" | "cooperating";
+    status: "available" | "unavailable" | "protected" | "relocated" | "deceased";
     caseId: string;
     contactPhone?: string;
     contactEmail?: string;
-    address?: string;
     isProtected: boolean;
     reliability: "high" | "medium" | "low";
     statements: number;
@@ -184,7 +171,7 @@ const seedWitnesses: Witness[] = [
     {
         id: "witness-008",
         witnessNumber: "WIT-2026-00008",
-        firstName: "Dr. Angela",
+        firstName: "Angela",
         lastName: "Martinez",
         fullName: "Dr. Angela Martinez",
         type: "expert",
@@ -198,9 +185,40 @@ const seedWitnesses: Witness[] = [
         lastContact: new Date("2026-01-26"),
         notes: "Forensic pathologist",
     },
+    {
+        id: "witness-009",
+        witnessNumber: "WIT-2026-00009",
+        firstName: "Linda",
+        lastName: "Park",
+        fullName: "Linda Park",
+        type: "eyewitness",
+        status: "available",
+        caseId: "case-002",
+        contactPhone: "+1-555-0223",
+        isProtected: false,
+        reliability: "medium",
+        statements: 2,
+        lastContact: new Date("2026-01-24"),
+    },
+    {
+        id: "witness-010",
+        witnessNumber: "WIT-2026-00010",
+        firstName: "Thomas",
+        lastName: "Baker",
+        fullName: "Thomas Baker",
+        type: "character",
+        status: "available",
+        caseId: "case-003",
+        contactPhone: "+1-555-0245",
+        contactEmail: "t.baker@email.com",
+        isProtected: false,
+        reliability: "high",
+        statements: 1,
+        lastContact: new Date("2026-01-18"),
+    },
 ];
 
-const STATUS_LABELS: Record<WitnessStatus, string> = {
+const STATUS_LABELS = {
     available: "Available",
     unavailable: "Unavailable",
     protected: "Protected",
@@ -208,7 +226,7 @@ const STATUS_LABELS: Record<WitnessStatus, string> = {
     deceased: "Deceased",
 };
 
-const TYPE_LABELS: Record<WitnessType, string> = {
+const TYPE_LABELS = {
     eyewitness: "Eyewitness",
     character: "Character",
     expert: "Expert",
@@ -216,161 +234,279 @@ const TYPE_LABELS: Record<WitnessType, string> = {
     cooperating: "Cooperating",
 };
 
-type ViewMode = "grid" | "table";
-
-function WitnessCard({ witness }: { witness: Witness }) {
-    const linkedCase = seedCases.find((c) => c.id === witness.caseId);
-
+// Compact Witness Item for accordion
+function WitnessItem({ witness }: { witness: Witness }) {
     return (
-        <motion.div
-            layout
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-        >
-            <Card hover padding="none" className="group">
-                <div className="p-4 space-y-3">
-                    {/* Header */}
-                    <div className="flex items-start gap-3">
-                        <div className="relative">
-                            <Avatar name={witness.fullName} size="lg" />
-                            {witness.isProtected && (
-                                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-status-secure rounded-full flex items-center justify-center">
-                                    <Shield className="h-3 w-3 text-white" />
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-xs font-mono text-bureau-500">{witness.witnessNumber}</p>
-                            <h3 className="font-medium text-bureau-100 mt-0.5 group-hover:text-accent-primary transition-colors">
-                                {witness.isProtected ? "PROTECTED IDENTITY" : witness.fullName}
-                            </h3>
-                        </div>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <button className="p-1 hover:bg-bureau-700 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <MoreHorizontal className="h-4 w-4 text-bureau-400" />
-                                </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    View Profile
-                                </DropdownMenuItem>
-                                <DropdownMenuItem>
-                                    <FileText className="mr-2 h-4 w-4" />
-                                    View Statements
-                                </DropdownMenuItem>
-                                <DropdownMenuItem>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    Edit
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+        <div className="flex items-center gap-3 p-3 bg-bureau-800/30 rounded-lg border border-bureau-700 hover:border-bureau-600 transition-colors group">
+            <div className="relative flex-shrink-0">
+                <Avatar name={witness.fullName} size="md" />
+                {witness.isProtected && (
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-status-secure rounded-full flex items-center justify-center">
+                        <Shield className="h-2.5 w-2.5 text-white" />
                     </div>
+                )}
+            </div>
 
-                    {/* Badges */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <Badge
-                            variant={
-                                witness.status === "available"
-                                    ? "success"
-                                    : witness.status === "protected"
-                                        ? "info"
-                                        : witness.status === "unavailable"
-                                            ? "warning"
-                                            : "default"
-                            }
-                            size="xs"
-                        >
-                            {STATUS_LABELS[witness.status]}
-                        </Badge>
-                        <Badge variant="outline" size="xs">
-                            {TYPE_LABELS[witness.type]}
-                        </Badge>
-                        <Badge
-                            variant={
-                                witness.reliability === "high"
-                                    ? "success"
-                                    : witness.reliability === "medium"
-                                        ? "warning"
-                                        : "danger"
-                            }
-                            size="xs"
-                        >
-                            {witness.reliability} reliability
-                        </Badge>
-                    </div>
-
-                    {/* Contact Info */}
-                    {!witness.isProtected && (
-                        <div className="space-y-1.5 text-xs text-bureau-400">
-                            {witness.contactPhone && (
-                                <div className="flex items-center gap-2">
-                                    <Phone className="h-3 w-3" />
-                                    <span>{witness.contactPhone}</span>
-                                </div>
-                            )}
-                            {witness.contactEmail && (
-                                <div className="flex items-center gap-2">
-                                    <Mail className="h-3 w-3" />
-                                    <span className="truncate">{witness.contactEmail}</span>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Stats */}
-                    <div className="flex items-center gap-4 text-xs">
-                        <div className="flex items-center gap-1 text-bureau-400">
-                            <FileText className="h-3 w-3" />
-                            <span>{witness.statements} statements</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-bureau-500">
-                            <Clock className="h-3 w-3" />
-                            <span>Last: {formatDate(witness.lastContact)}</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Footer */}
-                <div className="px-4 py-3 bg-bureau-850/50 border-t border-bureau-700 flex items-center justify-between text-xs">
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
                     <Link
-                        href={`/cases/${witness.caseId}`}
-                        className="flex items-center gap-1 text-bureau-400 hover:text-accent-primary"
+                        href={`/witnesses/${witness.id}`}
+                        className="text-sm font-medium text-bureau-100 hover:text-accent-primary truncate"
                     >
-                        <Briefcase className="h-3 w-3" />
-                        <span>{linkedCase?.caseNumber || "Unknown Case"}</span>
+                        {witness.isProtected ? "PROTECTED IDENTITY" : witness.fullName}
                     </Link>
                 </div>
-            </Card>
-        </motion.div>
+                <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs font-mono text-bureau-500">{witness.witnessNumber}</span>
+                    <span className="text-xs text-bureau-600">•</span>
+                    <span className="text-xs text-bureau-400">{TYPE_LABELS[witness.type]}</span>
+                    {!witness.isProtected && witness.contactPhone && (
+                        <>
+                            <span className="text-xs text-bureau-600">•</span>
+                            <span className="text-xs text-bureau-500 flex items-center gap-1">
+                                <Phone className="h-3 w-3" />
+                                {witness.contactPhone}
+                            </span>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-shrink-0">
+                <Badge
+                    variant={
+                        witness.reliability === "high"
+                            ? "success"
+                            : witness.reliability === "medium"
+                                ? "warning"
+                                : "danger"
+                    }
+                    size="xs"
+                >
+                    {witness.reliability}
+                </Badge>
+                <Badge
+                    variant={
+                        witness.status === "available"
+                            ? "success"
+                            : witness.status === "protected"
+                                ? "info"
+                                : "warning"
+                    }
+                    size="xs"
+                >
+                    {STATUS_LABELS[witness.status]}
+                </Badge>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-bureau-500 flex-shrink-0">
+                <FileText className="h-3 w-3" />
+                <span>{witness.statements}</span>
+            </div>
+
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Link href={`/witnesses/${witness.id}`}>
+                    <button className="p-1.5 hover:bg-bureau-700 rounded text-bureau-400 hover:text-bureau-100">
+                        <Eye className="h-4 w-4" />
+                    </button>
+                </Link>
+                <button className="p-1.5 hover:bg-bureau-700 rounded text-bureau-400 hover:text-bureau-100">
+                    <MessageSquare className="h-4 w-4" />
+                </button>
+            </div>
+        </div>
+    );
+}
+
+// Case Section with Witnesses (Accordion)
+function CaseWitnessSection({
+    caseData,
+    witnesses,
+    defaultExpanded = false
+}: {
+    caseData: typeof seedCases[0];
+    witnesses: Witness[];
+    defaultExpanded?: boolean;
+}) {
+    const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+
+    const availableCount = witnesses.filter(w => w.status === "available").length;
+    const protectedCount = witnesses.filter(w => w.isProtected).length;
+    const totalStatements = witnesses.reduce((acc, w) => acc + w.statements, 0);
+
+    return (
+        <Card className="overflow-hidden">
+            {/* Case Header - Clickable */}
+            <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="w-full p-4 flex items-center gap-4 hover:bg-bureau-800/50 transition-colors"
+            >
+                <div className={cn(
+                    "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0",
+                    caseData.priority === "critical" ? "bg-status-critical/20" :
+                        caseData.priority === "high" ? "bg-status-warning/20" :
+                            "bg-accent-primary/20"
+                )}>
+                    <Briefcase className={cn(
+                        "h-6 w-6",
+                        caseData.priority === "critical" ? "text-status-critical" :
+                            caseData.priority === "high" ? "text-status-warning" :
+                                "text-accent-primary"
+                    )} />
+                </div>
+
+                <div className="flex-1 text-left min-w-0">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-bureau-500">{caseData.caseNumber}</span>
+                        <Badge
+                            variant={
+                                caseData.priority === "critical"
+                                    ? "priority-critical"
+                                    : caseData.priority === "high"
+                                        ? "priority-high"
+                                        : "priority-medium"
+                            }
+                            size="xs"
+                        >
+                            {CASE_PRIORITY_LABELS[caseData.priority]}
+                        </Badge>
+                        <Badge
+                            variant={
+                                caseData.status === "active"
+                                    ? "case-active"
+                                    : caseData.status === "closed"
+                                        ? "case-closed"
+                                        : "default"
+                            }
+                            size="xs"
+                        >
+                            {CASE_STATUS_LABELS[caseData.status]}
+                        </Badge>
+                    </div>
+                    <h3 className="text-base font-medium text-bureau-100 mt-1 truncate">
+                        {caseData.title}
+                    </h3>
+                </div>
+
+                <div className="flex items-center gap-6 flex-shrink-0">
+                    <div className="text-right">
+                        <p className="text-lg font-bold text-bureau-100">{witnesses.length}</p>
+                        <p className="text-xs text-bureau-500">Witnesses</p>
+                    </div>
+
+                    <div className="text-right">
+                        <p className="text-lg font-bold text-bureau-100">{totalStatements}</p>
+                        <p className="text-xs text-bureau-500">Statements</p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {availableCount > 0 && (
+                            <div className="flex items-center gap-1 text-status-secure">
+                                <CheckCircle className="h-4 w-4" />
+                                <span className="text-xs">{availableCount}</span>
+                            </div>
+                        )}
+                        {protectedCount > 0 && (
+                            <div className="flex items-center gap-1 text-status-info">
+                                <Shield className="h-4 w-4" />
+                                <span className="text-xs">{protectedCount}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    <motion.div
+                        animate={{ rotate: isExpanded ? 180 : 0 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        <ChevronDown className="h-5 w-5 text-bureau-400" />
+                    </motion.div>
+                </div>
+            </button>
+
+            {/* Witness List - Expandable */}
+            <AnimatePresence>
+                {isExpanded && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                    >
+                        <div className="border-t border-bureau-700 p-4 space-y-2 bg-bureau-850/50">
+                            {witnesses.map((witness) => (
+                                <WitnessItem key={witness.id} witness={witness} />
+                            ))}
+
+                            <div className="flex items-center justify-between pt-3 border-t border-bureau-700 mt-3">
+                                <Link
+                                    href={`/cases/${caseData.id}`}
+                                    className="text-xs text-accent-primary hover:underline flex items-center gap-1"
+                                >
+                                    View Full Case Details
+                                    <ChevronRight className="h-3 w-3" />
+                                </Link>
+                                <Button variant="outline" size="sm" leftIcon={<Plus className="h-3 w-3" />}>
+                                    Add Witness
+                                </Button>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </Card>
     );
 }
 
 export default function WitnessesPage() {
-    const [viewMode, setViewMode] = useState<ViewMode>("grid");
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("all");
-    const [typeFilter, setTypeFilter] = useState<string>("all");
-
-    const filteredWitnesses = useMemo(() => {
-        return seedWitnesses.filter((w) => {
-            const matchesSearch =
-                searchQuery === "" ||
-                w.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                w.witnessNumber.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesStatus = statusFilter === "all" || w.status === statusFilter;
-            const matchesType = typeFilter === "all" || w.type === typeFilter;
-            return matchesSearch && matchesStatus && matchesType;
-        });
-    }, [searchQuery, statusFilter, typeFilter]);
 
     const stats = {
         total: seedWitnesses.length,
         available: seedWitnesses.filter((w) => w.status === "available").length,
         protected: seedWitnesses.filter((w) => w.isProtected).length,
+        unavailable: seedWitnesses.filter((w) => w.status === "unavailable").length,
     };
+
+    // Group witnesses by case
+    const witnessesByCase = useMemo(() => {
+        const grouped = new Map<string, Witness[]>();
+
+        seedWitnesses.forEach((witness) => {
+            // Apply filters
+            const matchesSearch =
+                searchQuery === "" ||
+                witness.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                witness.witnessNumber.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesStatus = statusFilter === "all" || witness.status === statusFilter;
+
+            if (matchesSearch && matchesStatus) {
+                const caseId = witness.caseId;
+                if (!grouped.has(caseId)) {
+                    grouped.set(caseId, []);
+                }
+                grouped.get(caseId)!.push(witness);
+            }
+        });
+
+        return grouped;
+    }, [searchQuery, statusFilter]);
+
+    // Get cases that have witnesses
+    const casesWithWitnesses = useMemo(() => {
+        return seedCases
+            .filter((c) => witnessesByCase.has(c.id))
+            .sort((a, b) => {
+                // Sort by priority first, then by number of witnesses
+                const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+                const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+                if (priorityDiff !== 0) return priorityDiff;
+                return (witnessesByCase.get(b.id)?.length || 0) - (witnessesByCase.get(a.id)?.length || 0);
+            });
+    }, [witnessesByCase]);
+
+    const totalFilteredWitnesses = Array.from(witnessesByCase.values()).reduce((acc, items) => acc + items.length, 0);
 
     return (
         <DashboardLayout>
@@ -383,40 +519,13 @@ export default function WitnessesPage() {
                             Witness Management
                         </h1>
                         <p className="text-bureau-400 mt-1">
-                            {stats.total} witnesses • {stats.available} available • {stats.protected} protected
+                            {stats.total} witnesses organized across {seedCases.length} cases
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center bg-bureau-800 rounded-lg p-1">
-                            <button
-                                onClick={() => setViewMode("grid")}
-                                className={cn(
-                                    "p-2 rounded-md transition-colors",
-                                    viewMode === "grid"
-                                        ? "bg-bureau-700 text-bureau-100"
-                                        : "text-bureau-400 hover:text-bureau-200"
-                                )}
-                            >
-                                <Grid3X3 className="h-4 w-4" />
-                            </button>
-                            <button
-                                onClick={() => setViewMode("table")}
-                                className={cn(
-                                    "p-2 rounded-md transition-colors",
-                                    viewMode === "table"
-                                        ? "bg-bureau-700 text-bureau-100"
-                                        : "text-bureau-400 hover:text-bureau-200"
-                                )}
-                            >
-                                <LayoutList className="h-4 w-4" />
-                            </button>
-                        </div>
-
-                        <Button leftIcon={<Plus className="h-4 w-4" />}>
-                            Add Witness
-                        </Button>
-                    </div>
+                    <Button leftIcon={<Plus className="h-4 w-4" />}>
+                        Add Witness
+                    </Button>
                 </div>
 
                 {/* Stats Cards */}
@@ -461,9 +570,7 @@ export default function WitnessesPage() {
                             </div>
                             <div>
                                 <p className="text-sm text-bureau-400">Unavailable</p>
-                                <p className="text-xl font-bold text-bureau-100">
-                                    {seedWitnesses.filter((w) => w.status === "unavailable").length}
-                                </p>
+                                <p className="text-xl font-bold text-bureau-100">{stats.unavailable}</p>
                             </div>
                         </div>
                     </Card>
@@ -474,7 +581,7 @@ export default function WitnessesPage() {
                     <div className="flex-1 max-w-md relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-bureau-500" />
                         <Input
-                            placeholder="Search witnesses..."
+                            placeholder="Search witnesses by name or number..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="pl-10"
@@ -493,125 +600,54 @@ export default function WitnessesPage() {
                         </SelectContent>
                     </Select>
 
-                    <Select value={typeFilter} onValueChange={setTypeFilter}>
-                        <SelectTrigger className="w-[160px]">
-                            <SelectValue placeholder="Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Types</SelectItem>
-                            <SelectItem value="eyewitness">Eyewitness</SelectItem>
-                            <SelectItem value="expert">Expert</SelectItem>
-                            <SelectItem value="character">Character</SelectItem>
-                            <SelectItem value="cooperating">Cooperating</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    {(statusFilter !== "all" || searchQuery) && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                                setStatusFilter("all");
+                                setSearchQuery("");
+                            }}
+                        >
+                            <X className="h-4 w-4 mr-1" />
+                            Clear
+                        </Button>
+                    )}
+
+                    <div className="text-sm text-bureau-400 self-center">
+                        Showing {totalFilteredWitnesses} witnesses in {casesWithWitnesses.length} cases
+                    </div>
                 </div>
 
-                {/* Grid View */}
-                <AnimatePresence mode="wait">
-                    {viewMode === "grid" ? (
-                        <motion.div
-                            key="grid"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                        >
-                            {filteredWitnesses.map((witness) => (
-                                <WitnessCard key={witness.id} witness={witness} />
-                            ))}
-                            {filteredWitnesses.length === 0 && (
-                                <div className="col-span-full text-center py-12 text-bureau-500">
-                                    <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                                    <p>No witnesses match your filters</p>
-                                </div>
-                            )}
-                        </motion.div>
-                    ) : (
-                        <motion.div
-                            key="table"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                        >
-                            <Card padding="none">
-                                <div className="overflow-x-auto">
-                                    <table className="w-full data-table">
-                                        <thead>
-                                            <tr className="border-b border-bureau-700">
-                                                <th className="text-left py-3 px-4">Witness</th>
-                                                <th className="text-left py-3 px-4">Status</th>
-                                                <th className="text-left py-3 px-4">Type</th>
-                                                <th className="text-left py-3 px-4">Reliability</th>
-                                                <th className="text-left py-3 px-4">Statements</th>
-                                                <th className="text-left py-3 px-4">Last Contact</th>
-                                                <th className="text-left py-3 px-4 w-10"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {filteredWitnesses.map((witness) => (
-                                                <tr
-                                                    key={witness.id}
-                                                    className="border-b border-bureau-700 hover:bg-bureau-800/50"
-                                                >
-                                                    <td className="py-3 px-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <Avatar name={witness.fullName} size="sm" />
-                                                            <div>
-                                                                <p className="font-mono text-xs text-bureau-500">
-                                                                    {witness.witnessNumber}
-                                                                </p>
-                                                                <p className="text-sm text-bureau-100">
-                                                                    {witness.isProtected ? "PROTECTED" : witness.fullName}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-3 px-4">
-                                                        <Badge
-                                                            variant={
-                                                                witness.status === "available" ? "success" :
-                                                                    witness.status === "protected" ? "info" : "warning"
-                                                            }
-                                                            size="xs"
-                                                        >
-                                                            {STATUS_LABELS[witness.status]}
-                                                        </Badge>
-                                                    </td>
-                                                    <td className="py-3 px-4 text-sm text-bureau-300">
-                                                        {TYPE_LABELS[witness.type]}
-                                                    </td>
-                                                    <td className="py-3 px-4">
-                                                        <Badge
-                                                            variant={
-                                                                witness.reliability === "high" ? "success" :
-                                                                    witness.reliability === "medium" ? "warning" : "danger"
-                                                            }
-                                                            size="xs"
-                                                        >
-                                                            {witness.reliability}
-                                                        </Badge>
-                                                    </td>
-                                                    <td className="py-3 px-4 text-sm text-bureau-400">
-                                                        {witness.statements}
-                                                    </td>
-                                                    <td className="py-3 px-4 text-sm text-bureau-400">
-                                                        {formatDate(witness.lastContact)}
-                                                    </td>
-                                                    <td className="py-3 px-4">
-                                                        <Button variant="ghost" size="icon-sm">
-                                                            <MoreHorizontal className="h-4 w-4" />
-                                                        </Button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </Card>
-                        </motion.div>
+                {/* Cases with Witnesses - Accordion Style */}
+                <div className="space-y-3">
+                    {casesWithWitnesses.map((caseData, index) => (
+                        <CaseWitnessSection
+                            key={caseData.id}
+                            caseData={caseData}
+                            witnesses={witnessesByCase.get(caseData.id) || []}
+                            defaultExpanded={index === 0}
+                        />
+                    ))}
+
+                    {casesWithWitnesses.length === 0 && (
+                        <Card className="p-12 text-center">
+                            <Users className="h-12 w-12 mx-auto mb-3 text-bureau-500 opacity-50" />
+                            <p className="text-bureau-400">No witnesses match your filters</p>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="mt-4"
+                                onClick={() => {
+                                    setStatusFilter("all");
+                                    setSearchQuery("");
+                                }}
+                            >
+                                Clear Filters
+                            </Button>
+                        </Card>
                     )}
-                </AnimatePresence>
+                </div>
             </div>
         </DashboardLayout>
     );
