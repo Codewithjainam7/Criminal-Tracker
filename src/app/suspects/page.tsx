@@ -50,8 +50,8 @@ import {
 
 type ViewMode = "grid" | "table";
 
-const statusOptions: SuspectStatus[] = ["wanted", "apprehended", "released", "deceased", "unknown", "cleared"];
-const riskOptions: RiskLevel[] = ["extreme", "high", "medium", "low", "unknown"];
+const statusOptions: SuspectStatus[] = Object.keys(SUSPECT_STATUS_LABELS) as SuspectStatus[];
+const riskOptions: RiskLevel[] = Object.keys(RISK_LEVEL_LABELS) as RiskLevel[];
 
 function SuspectCard({ suspect }: { suspect: (typeof seedSuspects)[0] }) {
     const linkedCasesCount = seedCases.filter((c) =>
